@@ -1,36 +1,52 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { CandlestickChart } from '../components/Chart/CandlestickChart';
-import { VirtualizedGrid } from '../components/DataGrid/VirtualizedGrid';
-import { LLMSummary } from '../components/Summary/LLMSummary';
-import { useData } from '../contexts/DataContext';
-import { convertToCandlestickData } from '../utils/finance';
+import { DataContext } from '../contexts/DataContext';
+import ErrorBoundary from '../components/ErrorBoundary';
 
-export const Dashboard: React.FC = () => {
-    const { stocks } = useData();
-    const candlestickData = convertToCandlestickData(stocks.slice(0, 50)); // Sample for chart
+
+const Dashboard: React.FC = () => {
+    const { data, isLoading, error } = useContext(DataContext);
+
+    // Debugging: Log data to verify it's loaded correctly
+    console.log('Dashboard data:', data);
+
+    // Handle loading/error states
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-4 bg-red-100 text-red-700 rounded">
+                Error loading data: {error.message}
+            </div>
+        );
+    }
+
+    if (!data || data.length === 0) {
+        return (
+            <div className="p-4 bg-yellow-100 text-yellow-700 rounded">
+                No data available. Please check your data source.
+            </div>
+        );
+    }
 
     return (
-        <div className="container mx-auto p-4">
-            <h1 className="text-2xl font-bold mb-6">Portfolio Analytics</h1>
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Financial Dashboard</h1>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                    <div className="bg-white p-4 rounded-lg shadow mb-6">
-                        <h2 className="font-semibold mb-4">Price Movement (AAPL)</h2>
-                        <CandlestickChart data={candlestickData} />
-                    </div>
+            {/* Wrap chart in ErrorBoundary to prevent crashes */}
+            <ErrorBoundary fallback={<div className="p-4 bg-red-100 text-red-700 rounded">Chart failed to render</div>}>
+                <div className="border rounded-lg p-4 bg-white shadow-sm">
+                    <CandlestickChart data={data} />
                 </div>
-
-                <div className="space-y-6">
-                    <div className="bg-white p-4 rounded-lg shadow">
-                        <LLMSummary />
-                    </div>
-                    <div className="bg-white p-4 rounded-lg shadow">
-                        <h2 className="font-semibold mb-4">Portfolio Holdings</h2>
-                        <VirtualizedGrid stocks={stocks} />
-                    </div>
-                </div>
-            </div>
+            </ErrorBoundary>
         </div>
     );
 };
+
+export default Dashboard;

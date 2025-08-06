@@ -1,46 +1,61 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { generateMockData } from '../utils/mockData';
+import React, { createContext, useState, useEffect } from 'react';
 
-export type StockData = {
+interface DataContextProps {
+    data: any[]; // Replace with your data type
+    isLoading: boolean;
+    error: Error | null;
+}
+
+export interface StockData {
+    time: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
     ticker: string;
     price: number;
     change: number;
-    lastUpdated: Date;
-};
+}
 
-type DataContextType = {
-    stocks: StockData[];
-};
-
-export const DataContext = createContext<DataContextType>({ stocks: [] });
+export const DataContext = createContext<{
+    data: StockData[]; // Replace `any[]` with `StockData[]`
+    isLoading: boolean;
+    error: Error | null;
+}>({
+    data: [],
+    isLoading: false,
+    error: null,
+});
 
 interface DataProviderProps {
-    children: ReactNode;
+    children: React.ReactNode;
 }
 
 export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
-    const [stocks, setStocks] = useState<StockData[]>(generateMockData());
+    const [data, setData] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setStocks(prev => prev.map(stock => ({
-                ...stock,
-                price: stock.price * (1 + (Math.random() - 0.5) * 0.01), // ±1%
-                lastUpdated: new Date()
-            })));
-        }, 1500);
+        const fetchData = async () => {
+            try {
+                setIsLoading(true);
+                const response = await fetch('/mock-data.json');
+                const jsonData = await response.json();
+                setData(jsonData);
+            } catch (err) {
+                setError(err as Error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-        return () => clearInterval(interval);
+        fetchData();
     }, []);
 
-    return <DataContext.Provider value={{ stocks }}>{children}</DataContext.Provider>;
-};
-
-// Add this custom hook at the bottom of the file
-export const useData = () => {
-    const context = useContext(DataContext);
-    if (context === undefined) {
-        throw new Error('useData must be used within a DataProvider');
-    }
-    return context;
+    return (
+        <DataContext.Provider value={{ data, isLoading, error }}>
+            {children}
+        </DataContext.Provider>
+    );
 };
